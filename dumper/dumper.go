@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
+	unified2 "github.com/jasonish/go-unified2"
 	"os"
-	"unified2"
 )
 
 func main() {

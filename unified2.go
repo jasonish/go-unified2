@@ -1,17 +1,40 @@
-/*
-Package unified2 implements functions for reading SNORT(R) unified2
-log files.
-*/
+/* Copyright (c) 2013 Jason Ish
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT,
+ * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
+
+// Package unified2 implements functions for reading SNORT(R) unified2
+// log files.
 
 package unified2
 
 import (
 	"bytes"
+	"container/list"
 	"encoding/binary"
 	"io"
 	"os"
-	"container/list"
-	//"fmt"
 )
 
 const (
@@ -23,7 +46,7 @@ const (
 	UNIFIED2_EXTRA_DATA       = 110
 )
 
-func isEventType(record *Record) (bool) {
+func isEventType(record *Record) bool {
 	switch record.Type {
 	case UNIFIED2_IDS_EVENT, UNIFIED2_IDS_EVENT_IP6,
 		UNIFIED2_IDS_EVENT_V2, UNIFIED2_IDS_EVENT_IP6_V2:
@@ -69,31 +92,31 @@ type Event struct {
 	MplsLabel         uint32
 	VlanId            uint16
 
-	Packets           *list.List
-	ExtraData         *list.List
+	Packets   *list.List
+	ExtraData *list.List
 }
 
 type Packet struct {
-	SensorId uint32
-	EventId uint32
-	EventSecond uint32
-	PacketSecond uint32
+	SensorId          uint32
+	EventId           uint32
+	EventSecond       uint32
+	PacketSecond      uint32
 	PacketMicrosecond uint32
-	LinkType uint32
-	Length uint32
-	Data []byte
+	LinkType          uint32
+	Length            uint32
+	Data              []byte
 }
 
 type ExtraData struct {
-	EventType uint32
+	EventType   uint32
 	EventLength uint32
-	SensorId uint32
-	EventId uint32
+	SensorId    uint32
+	EventId     uint32
 	EventSecond uint32
-	Type uint32
-	DataType uint32
-	DataLength uint32
-	Data []byte
+	Type        uint32
+	DataType    uint32
+	DataLength  uint32
+	Data        []byte
 }
 
 func new_record(rec_type uint32, data []byte) *Record {
@@ -145,7 +168,7 @@ func DecodeExtraData(record *Record) (extra *ExtraData, err error) {
 	}
 
 	/* Make the buffer for the data.  This is DataLength - 8. */
-	extra.Data = make([]byte, extra.DataLength - 8)
+	extra.Data = make([]byte, extra.DataLength-8)
 
 	if err = read(reader, &extra.Data); err != nil {
 		return nil, err
@@ -159,36 +182,44 @@ func DecodePacket(record *Record) (packet *Packet, err error) {
 	packet = new(Packet)
 	reader := bytes.NewBuffer(record.Data)
 
-	err = read(reader, &packet.SensorId); if err != nil {
+	err = read(reader, &packet.SensorId)
+	if err != nil {
 		return nil, err
 	}
 
-	err = read(reader, &packet.EventId); if err != nil {
+	err = read(reader, &packet.EventId)
+	if err != nil {
 		return nil, err
 	}
 
-	err = read(reader, &packet.EventSecond); if err != nil {
+	err = read(reader, &packet.EventSecond)
+	if err != nil {
 		return nil, err
 	}
 
-	err = read(reader, &packet.PacketSecond); if err != nil {
+	err = read(reader, &packet.PacketSecond)
+	if err != nil {
 		return nil, err
 	}
 
-	err = read(reader, &packet.PacketMicrosecond); if err != nil {
+	err = read(reader, &packet.PacketMicrosecond)
+	if err != nil {
 		return nil, err
 	}
 
-	err = read(reader, &packet.LinkType); if err != nil {
+	err = read(reader, &packet.LinkType)
+	if err != nil {
 		return nil, err
 	}
 
-	err = read(reader, &packet.Length); if err != nil {
+	err = read(reader, &packet.Length)
+	if err != nil {
 		return nil, err
 	}
- 
+
 	packet.Data = make([]byte, packet.Length)
-	err = read(reader, &packet.Data); if err != nil {
+	err = read(reader, &packet.Data)
+	if err != nil {
 		return nil, err
 	}
 
@@ -244,7 +275,7 @@ func DecodeEvent(record *Record) (event *Event, err error) {
 
 	/* Source and destination IP addresses. */
 	switch record.Type {
-	
+
 	case UNIFIED2_IDS_EVENT, UNIFIED2_IDS_EVENT_V2:
 		event.IpSource = make([]byte, 4)
 		if err = read(reader, &event.IpSource); err != nil {

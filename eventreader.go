@@ -34,17 +34,16 @@ type EventReader struct {
 	queue *Queue
 }
 
-func NewEventReader() (*EventReader) {
+func NewEventReader() *EventReader {
 	eventReader := new(EventReader)
 	eventReader.queue = NewQueue()
 	return eventReader
 }
 
-func (er EventReader) Next(file os.File) (*Event) {
+func (er EventReader) Next(file os.File) *Event {
 	return nil
 }
 
-func (er EventReader) Flush() (*Event) {
+func (er EventReader) Flush() *Event {
 	return nil
 }
-
