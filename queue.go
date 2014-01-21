@@ -77,7 +77,7 @@ func (q Queue) Flush() *Event {
 	var event *Event
 	var err error
 
-	if isEventType(record) {
+	if IsEventType(record) {
 		event, err = DecodeEvent(record)
 	} else {
 		panic("event type expected")

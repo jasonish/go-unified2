@@ -46,10 +46,12 @@ const (
 	UNIFIED2_EXTRA_DATA       = 110
 )
 
-func isEventType(record *Record) bool {
+func IsEventType(record *Record) bool {
 	switch record.Type {
-	case UNIFIED2_IDS_EVENT, UNIFIED2_IDS_EVENT_IP6,
-		UNIFIED2_IDS_EVENT_V2, UNIFIED2_IDS_EVENT_IP6_V2:
+	case UNIFIED2_IDS_EVENT,
+		UNIFIED2_IDS_EVENT_IP6,
+		UNIFIED2_IDS_EVENT_V2,
+		UNIFIED2_IDS_EVENT_IP6_V2:
 		return true
 	default:
 		return false
@@ -64,6 +66,7 @@ type header struct {
 
 /* A data type representing a unified2 record. */
 type Record struct {
+
 	/* Record type. */
 	Type uint32
 
@@ -117,13 +120,6 @@ type ExtraData struct {
 	DataType    uint32
 	DataLength  uint32
 	Data        []byte
-}
-
-func new_record(rec_type uint32, data []byte) *Record {
-	record := new(Record)
-	record.Type = rec_type
-	record.Data = data
-	return record
 }
 
 func read(reader io.Reader, data interface{}) error {
@@ -379,5 +375,5 @@ func ReadRecord(file *os.File) (*Record, error) {
 		return nil, err
 	}
 
-	return new_record(header.Type, data), nil
+	return &Record{header.Type, data}, nil
 }
