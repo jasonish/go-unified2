@@ -26,7 +26,6 @@
 
 package unified2
 
-import "fmt"
 import "container/list"
 
 type EventAggregator struct {
@@ -39,21 +38,37 @@ func NewEventAggregator() *EventAggregator {
 	return aggregator
 }
 
+func (ea EventAggregator) Add(record *RecordContainer) []*RecordContainer {
+
+	var event []*RecordContainer = nil
+
+	// Check if we need to flush.
+	if IsEventType(record.Type) && ea.buffer.Len() > 0 {
+		event = ea.Flush()
+	}
+
+	ea.buffer.PushBack(record)
+
+	return event
+}
+
 func (a EventAggregator) Len() int {
 	return a.buffer.Len()
 }
 
-func (a EventAggregator) Flush() {
+func (ea EventAggregator) Pop() *RecordContainer {
+	record := ea.buffer.Front()
+	ea.buffer.Remove(record)
+	return record.Value.(*RecordContainer)
+}
 
-	fmt.Println("flush: queue len:", a.Len())
-	for {
-		element := a.buffer.Front()
-		if element == nil {
-			fmt.Println("- queue is empty, nothing to flush")
-			break
-		} else {
-			fmt.Println("- flushing ", element)
-			a.buffer.Remove(element)
-		}
+func (ea EventAggregator) Flush() []*RecordContainer {
+
+	event := make([]*RecordContainer, ea.buffer.Len())
+
+	for key, _ := range event {
+		event[key] = ea.Pop()
 	}
+
+	return event
 }
