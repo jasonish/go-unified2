@@ -20,14 +20,12 @@ type Stats struct {
 
 func main() {
 
-	flagNoDecode := flag.Bool("nodecode", false, "don't decode")
 	flag.Parse()
 	args := flag.Args()
 
 	startTime := time.Now()
 	var recordCount int
 	var stats Stats
-
 	for _, arg := range args {
 
 		fmt.Println("Opening", arg)
@@ -47,44 +45,15 @@ func main() {
 			}
 			recordCount++
 
-			// If flagNoDecode is set continue onto the next record
-			// without decoding.
-			if *flagNoDecode {
-				continue
-			}
-
-			// Now that we have a record type, we can decode it, and print
-			// out as JSON or whatever.
-			if unified2.IsEventType(record) {
-
-				// An event record.
-				_, err := unified2.DecodeEvent(record)
-				if err != nil {
-					fmt.Println("error decoding event:", err)
-					os.Exit(1)
-				}
+			if unified2.IsEventType(record.Type) {
 
 				stats.Events++
 
 			} else if record.Type == unified2.UNIFIED2_PACKET {
 
-				// A packet record.
-				_, err := unified2.DecodePacket(record)
-				if err != nil {
-					fmt.Println("error decoding packet:", err)
-					break
-				}
-
 				stats.Packets++
 
 			} else if record.Type == unified2.UNIFIED2_EXTRA_DATA {
-
-				// An extra data record.
-				_, err := unified2.DecodeExtraData(record)
-				if err != nil {
-					fmt.Println("error decoding extra data:", err)
-					break
-				}
 
 				stats.ExtraData++
 

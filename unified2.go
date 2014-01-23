@@ -45,20 +45,24 @@ const (
 	UNIFIED2_EXTRA_DATA       = 110
 )
 
-/* A unified2 record header. */
-type header struct {
+/* A raw unified2 record header. */
+type rawHeader struct {
 	Type uint32
 	Len  uint32
 }
 
-/* A data type representing a unified2 record. */
-type Record struct {
+type RawRecord struct {
+	Type uint32
+	Data []byte
+}
 
-	/* Record type. */
+type RecordContainer struct {
+
+	/* The record type. */
 	Type uint32
 
-	/* Record data. */
-	Data []byte
+	/* The decoded record. */
+	Record interface{}
 }
 
 type EventRecord struct {
@@ -114,8 +118,8 @@ func read(reader io.Reader, data interface{}) error {
 	return binary.Read(reader, binary.BigEndian, data)
 }
 
-func IsEventType(record *Record) bool {
-	switch record.Type {
+func IsEventType(recordType uint32) bool {
+	switch recordType {
 	case UNIFIED2_IDS_EVENT,
 		UNIFIED2_IDS_EVENT_IP6,
 		UNIFIED2_IDS_EVENT_V2,
@@ -126,11 +130,11 @@ func IsEventType(record *Record) bool {
 	}
 }
 
-func DecodeEvent(record *Record) (event *EventRecord, err error) {
+func DecodeEvent(eventType uint32, data []byte) (event *EventRecord, err error) {
 
 	event = &EventRecord{}
 
-	reader := bytes.NewBuffer(record.Data)
+	reader := bytes.NewBuffer(data)
 
 	// SensorId
 	if err = read(reader, &event.SensorId); err != nil {
@@ -172,7 +176,7 @@ func DecodeEvent(record *Record) (event *EventRecord, err error) {
 	}
 
 	/* Source and destination IP addresses. */
-	switch record.Type {
+	switch eventType {
 
 	case UNIFIED2_IDS_EVENT, UNIFIED2_IDS_EVENT_V2:
 		event.IpSource = make([]byte, 4)
@@ -225,8 +229,8 @@ func DecodeEvent(record *Record) (event *EventRecord, err error) {
 		return nil, err
 	}
 
-	if record.Type == UNIFIED2_IDS_EVENT_V2 ||
-		record.Type == UNIFIED2_IDS_EVENT_IP6_V2 {
+	if eventType == UNIFIED2_IDS_EVENT_V2 ||
+		eventType == UNIFIED2_IDS_EVENT_IP6_V2 {
 
 		/* MplsLabel. */
 		if err = read(reader, &event.MplsLabel); err != nil {
@@ -242,11 +246,11 @@ func DecodeEvent(record *Record) (event *EventRecord, err error) {
 	return event, nil
 }
 
-func DecodePacket(record *Record) (packet *PacketRecord, err error) {
+func DecodePacket(data []byte) (packet *PacketRecord, err error) {
 
 	packet = &PacketRecord{}
 
-	reader := bytes.NewBuffer(record.Data)
+	reader := bytes.NewBuffer(data)
 
 	err = read(reader, &packet.SensorId)
 	if err != nil {
@@ -283,16 +287,16 @@ func DecodePacket(record *Record) (packet *PacketRecord, err error) {
 		return nil, err
 	}
 
-	packet.Data = record.Data[PACKET_RECORD_HDR_LEN:]
+	packet.Data = data[PACKET_RECORD_HDR_LEN:]
 
 	return packet, nil
 }
 
-func DecodeExtraData(record *Record) (extra *ExtraDataRecord, err error) {
+func DecodeExtraData(data []byte) (extra *ExtraDataRecord, err error) {
 
 	extra = &ExtraDataRecord{}
 
-	reader := bytes.NewBuffer(record.Data)
+	reader := bytes.NewBuffer(data)
 
 	if err = read(reader, &extra.EventType); err != nil {
 		return nil, err
@@ -326,22 +330,14 @@ func DecodeExtraData(record *Record) (extra *ExtraDataRecord, err error) {
 		return nil, err
 	}
 
-	extra.Data = record.Data[EXTRA_DATA_RECORD_HDR_LEN:]
+	extra.Data = data[EXTRA_DATA_RECORD_HDR_LEN:]
 
 	return extra, nil
 }
 
-// Read a unified2 record from the provided file.  If successful, a
-// record will be returned, otherwise an error will be set.
-//
-// On error this function will attempt to reset the file pointer to
-// where it was upon entering the function.  This is to handle the
-// case where there is not enough data to read a complete record.
-//
-// ? Should file pointer accounting be left to the caller?
-func ReadRecord(file *os.File) (*Record, error) {
-
-	var header header
+// Read a raw record from the input file.
+func ReadRawRecord(file *os.File) (*RawRecord, error) {
+	var header rawHeader
 
 	/* Get the current offset so we can seek back to it. */
 	offset, _ := file.Seek(0, 1)
@@ -367,5 +363,37 @@ func ReadRecord(file *os.File) (*Record, error) {
 		return nil, err
 	}
 
-	return &Record{header.Type, data}, nil
+	return &RawRecord{header.Type, data}, nil
+}
+
+// Read and decode a record from the input file.
+func ReadRecord(file *os.File) (*RecordContainer, error) {
+
+	record, err := ReadRawRecord(file)
+	if err != nil {
+		return nil, err
+	}
+
+	var decoded interface{} = nil
+
+	switch record.Type {
+	case UNIFIED2_IDS_EVENT,
+		UNIFIED2_IDS_EVENT_IP6,
+		UNIFIED2_IDS_EVENT_V2,
+		UNIFIED2_IDS_EVENT_IP6_V2:
+		decoded, err = DecodeEvent(record.Type, record.Data)
+	case UNIFIED2_PACKET:
+		decoded, err = DecodePacket(record.Data)
+	case UNIFIED2_EXTRA_DATA:
+		decoded, err = DecodeExtraData(record.Data)
+	}
+
+	if err != nil {
+		return nil, err
+	} else if decoded != nil {
+		return &RecordContainer{record.Type, decoded}, nil
+	} else {
+		// Unknown record type.
+		return nil, nil
+	}
 }
