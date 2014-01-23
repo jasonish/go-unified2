@@ -26,24 +26,34 @@
 
 package unified2
 
-import (
-	"os"
-)
+import "fmt"
+import "container/list"
 
-type EventReader struct {
-	queue *Queue
+type EventAggregator struct {
+	buffer *list.List
 }
 
-func NewEventReader() *EventReader {
-	eventReader := new(EventReader)
-	eventReader.queue = NewQueue()
-	return eventReader
+func NewEventAggregator() *EventAggregator {
+	aggregator := new(EventAggregator)
+	aggregator.buffer = list.New()
+	return aggregator
 }
 
-func (er EventReader) Next(file os.File) *Event {
-	return nil
+func (a EventAggregator) Len() int {
+	return a.buffer.Len()
 }
 
-func (er EventReader) Flush() *Event {
-	return nil
+func (a EventAggregator) Flush() {
+
+	fmt.Println("flush: queue len:", a.Len())
+	for {
+		element := a.buffer.Front()
+		if element == nil {
+			fmt.Println("- queue is empty, nothing to flush")
+			break
+		} else {
+			fmt.Println("- flushing ", element)
+			a.buffer.Remove(element)
+		}
+	}
 }

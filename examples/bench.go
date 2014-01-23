@@ -10,22 +10,10 @@ import "fmt"
 import "io"
 import "flag"
 import "time"
-import "encoding/json"
 import "github.com/jasonish/go-unified2"
-
-func printAsJson(record interface{}) error {
-	asJson, err := json.Marshal(record)
-	if err != nil {
-		fmt.Println("failed to encode as json:", err)
-		return err
-	}
-	fmt.Println("  Decoded:", string(asJson))
-	return nil
-}
 
 func main() {
 
-	flagQuiet := flag.Bool("quiet", false, "be quiet")
 	flagNoDecode := flag.Bool("nodecode", false, "don't decode")
 	flag.Parse()
 	args := flag.Args()
@@ -35,7 +23,7 @@ func main() {
 
 	for _, arg := range args {
 
-		fmt.Println("Opening ", arg)
+		fmt.Println("Opening", arg)
 		file, err := os.Open(arg)
 		if err != nil {
 			fmt.Println("error opening ", arg, ":", err)
@@ -52,12 +40,6 @@ func main() {
 			}
 			recordCount++
 
-			// We now have a record.
-			if !*flagQuiet {
-				fmt.Printf("Record type: %d; length: %d\n", record.Type,
-					len(record.Data))
-			}
-
 			// If flagNoDecode is set continue onto the next record
 			// without decoding.
 			if *flagNoDecode {
@@ -69,41 +51,28 @@ func main() {
 			if unified2.IsEventType(record) {
 
 				// An event record.
-				event, err := unified2.DecodeEvent(record)
+				_, err := unified2.DecodeEvent(record)
 				if err != nil {
 					fmt.Println("error decoding event:", err)
 					os.Exit(1)
 				}
 
-				// Print out as JSON.
-				if !*flagQuiet {
-					printAsJson(event)
-				}
-
 			} else if record.Type == unified2.UNIFIED2_PACKET {
 
 				// A packet record.
-				packet, err := unified2.DecodePacket(record)
+				_, err := unified2.DecodePacket(record)
 				if err != nil {
 					fmt.Println("error decoding packet:", err)
 					break
 				}
 
-				// Print out as JSON.
-				if !*flagQuiet {
-					printAsJson(packet)
-				}
 			} else if record.Type == unified2.UNIFIED2_EXTRA_DATA {
 
 				// An extra data record.
-				extraData, err := unified2.DecodeExtraData(record)
+				_, err := unified2.DecodeExtraData(record)
 				if err != nil {
 					fmt.Println("error decoding extra data:", err)
 					break
-				}
-
-				if !*flagQuiet {
-					printAsJson(extraData)
 				}
 
 			}
@@ -113,8 +82,8 @@ func main() {
 	}
 
 	elapsedTime := time.Now().Sub(startTime)
-	perSecond := recordCount / int(elapsedTime.Seconds())
+	perSecond := float64(recordCount) / elapsedTime.Seconds()
 
 	fmt.Printf("Records: %d; Time: %s; Records/sec: %d\n",
-		recordCount, elapsedTime, perSecond)
+		recordCount, elapsedTime, int(perSecond))
 }

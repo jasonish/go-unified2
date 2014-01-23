@@ -31,7 +31,6 @@ package unified2
 
 import (
 	"bytes"
-	"container/list"
 	"encoding/binary"
 	"io"
 	"os"
@@ -45,18 +44,6 @@ const (
 	UNIFIED2_IDS_EVENT_IP6_V2 = 105
 	UNIFIED2_EXTRA_DATA       = 110
 )
-
-func IsEventType(record *Record) bool {
-	switch record.Type {
-	case UNIFIED2_IDS_EVENT,
-		UNIFIED2_IDS_EVENT_IP6,
-		UNIFIED2_IDS_EVENT_V2,
-		UNIFIED2_IDS_EVENT_IP6_V2:
-		return true
-	default:
-		return false
-	}
-}
 
 /* A unified2 record header. */
 type header struct {
@@ -74,7 +61,7 @@ type Record struct {
 	Data []byte
 }
 
-type Event struct {
+type EventRecord struct {
 	SensorId          uint32
 	EventId           uint32
 	EventSecond       uint32
@@ -94,12 +81,9 @@ type Event struct {
 	Blocked           uint8
 	MplsLabel         uint32
 	VlanId            uint16
-
-	Packets   *list.List
-	ExtraData *list.List
 }
 
-type Packet struct {
+type PacketRecord struct {
 	SensorId          uint32
 	EventId           uint32
 	EventSecond       uint32
@@ -110,7 +94,9 @@ type Packet struct {
 	Data              []byte
 }
 
-type ExtraData struct {
+const PACKET_RECORD_HDR_LEN = 28
+
+type ExtraDataRecord struct {
 	EventType   uint32
 	EventLength uint32
 	SensorId    uint32
@@ -122,111 +108,27 @@ type ExtraData struct {
 	Data        []byte
 }
 
+const EXTRA_DATA_RECORD_HDR_LEN = 32
+
 func read(reader io.Reader, data interface{}) error {
 	return binary.Read(reader, binary.BigEndian, data)
 }
 
-func DecodeExtraData(record *Record) (extra *ExtraData, err error) {
-
-	extra = new(ExtraData)
-	reader := bytes.NewBuffer(record.Data)
-
-	if err = read(reader, &extra.EventType); err != nil {
-		return nil, err
+func IsEventType(record *Record) bool {
+	switch record.Type {
+	case UNIFIED2_IDS_EVENT,
+		UNIFIED2_IDS_EVENT_IP6,
+		UNIFIED2_IDS_EVENT_V2,
+		UNIFIED2_IDS_EVENT_IP6_V2:
+		return true
+	default:
+		return false
 	}
-
-	if err = read(reader, &extra.EventLength); err != nil {
-		return nil, err
-	}
-
-	if err = read(reader, &extra.SensorId); err != nil {
-		return nil, err
-	}
-
-	if err = read(reader, &extra.EventId); err != nil {
-		return nil, err
-	}
-
-	if err = read(reader, &extra.EventSecond); err != nil {
-		return nil, err
-	}
-
-	if err = read(reader, &extra.Type); err != nil {
-		return nil, err
-	}
-
-	if err = read(reader, &extra.DataType); err != nil {
-		return nil, err
-	}
-
-	if err = read(reader, &extra.DataLength); err != nil {
-		return nil, err
-	}
-
-	/* Make the buffer for the data.  This is DataLength - 8. */
-	extra.Data = make([]byte, extra.DataLength-8)
-
-	if err = read(reader, &extra.Data); err != nil {
-		return nil, err
-	}
-
-	return extra, nil
 }
 
-func DecodePacket(record *Record) (packet *Packet, err error) {
+func DecodeEvent(record *Record) (event *EventRecord, err error) {
 
-	packet = new(Packet)
-	reader := bytes.NewBuffer(record.Data)
-
-	err = read(reader, &packet.SensorId)
-	if err != nil {
-		return nil, err
-	}
-
-	err = read(reader, &packet.EventId)
-	if err != nil {
-		return nil, err
-	}
-
-	err = read(reader, &packet.EventSecond)
-	if err != nil {
-		return nil, err
-	}
-
-	err = read(reader, &packet.PacketSecond)
-	if err != nil {
-		return nil, err
-	}
-
-	err = read(reader, &packet.PacketMicrosecond)
-	if err != nil {
-		return nil, err
-	}
-
-	err = read(reader, &packet.LinkType)
-	if err != nil {
-		return nil, err
-	}
-
-	err = read(reader, &packet.Length)
-	if err != nil {
-		return nil, err
-	}
-
-	packet.Data = make([]byte, packet.Length)
-	err = read(reader, &packet.Data)
-	if err != nil {
-		return nil, err
-	}
-
-	return packet, nil
-}
-
-func DecodeEvent(record *Record) (event *Event, err error) {
-
-	event = new(Event)
-	event.Packets = list.New()
-	event.ExtraData = list.New()
+	event = &EventRecord{}
 
 	reader := bytes.NewBuffer(record.Data)
 
@@ -340,6 +242,95 @@ func DecodeEvent(record *Record) (event *Event, err error) {
 	return event, nil
 }
 
+func DecodePacket(record *Record) (packet *PacketRecord, err error) {
+
+	packet = &PacketRecord{}
+
+	reader := bytes.NewBuffer(record.Data)
+
+	err = read(reader, &packet.SensorId)
+	if err != nil {
+		return nil, err
+	}
+
+	err = read(reader, &packet.EventId)
+	if err != nil {
+		return nil, err
+	}
+
+	err = read(reader, &packet.EventSecond)
+	if err != nil {
+		return nil, err
+	}
+
+	err = read(reader, &packet.PacketSecond)
+	if err != nil {
+		return nil, err
+	}
+
+	err = read(reader, &packet.PacketMicrosecond)
+	if err != nil {
+		return nil, err
+	}
+
+	err = read(reader, &packet.LinkType)
+	if err != nil {
+		return nil, err
+	}
+
+	err = read(reader, &packet.Length)
+	if err != nil {
+		return nil, err
+	}
+
+	packet.Data = record.Data[PACKET_RECORD_HDR_LEN:]
+
+	return packet, nil
+}
+
+func DecodeExtraData(record *Record) (extra *ExtraDataRecord, err error) {
+
+	extra = &ExtraDataRecord{}
+
+	reader := bytes.NewBuffer(record.Data)
+
+	if err = read(reader, &extra.EventType); err != nil {
+		return nil, err
+	}
+
+	if err = read(reader, &extra.EventLength); err != nil {
+		return nil, err
+	}
+
+	if err = read(reader, &extra.SensorId); err != nil {
+		return nil, err
+	}
+
+	if err = read(reader, &extra.EventId); err != nil {
+		return nil, err
+	}
+
+	if err = read(reader, &extra.EventSecond); err != nil {
+		return nil, err
+	}
+
+	if err = read(reader, &extra.Type); err != nil {
+		return nil, err
+	}
+
+	if err = read(reader, &extra.DataType); err != nil {
+		return nil, err
+	}
+
+	if err = read(reader, &extra.DataLength); err != nil {
+		return nil, err
+	}
+
+	extra.Data = record.Data[EXTRA_DATA_RECORD_HDR_LEN:]
+
+	return extra, nil
+}
+
 // Read a unified2 record from the provided file.  If successful, a
 // record will be returned, otherwise an error will be set.
 //
@@ -349,6 +340,7 @@ func DecodeEvent(record *Record) (event *Event, err error) {
 //
 // ? Should file pointer accounting be left to the caller?
 func ReadRecord(file *os.File) (*Record, error) {
+
 	var header header
 
 	/* Get the current offset so we can seek back to it. */
@@ -366,8 +358,8 @@ func ReadRecord(file *os.File) (*Record, error) {
 	data := make([]byte, header.Len)
 	len, err := file.Read(data)
 	if uint32(len) < header.Len {
-		/* Didn't read enough data. The error
-		/* io.ErrShortBuffer seems to make sense here. */
+		/* Didn't read enough data. The error io.ErrShortBuffer seems
+		/* to make sense here. */
 		file.Seek(offset, 0)
 		return nil, io.ErrShortBuffer
 	} else if err != nil {
