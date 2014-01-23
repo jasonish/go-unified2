@@ -12,6 +12,12 @@ import "flag"
 import "time"
 import "github.com/jasonish/go-unified2"
 
+type Stats struct {
+	Events    int
+	Packets   int
+	ExtraData int
+}
+
 func main() {
 
 	flagNoDecode := flag.Bool("nodecode", false, "don't decode")
@@ -20,6 +26,7 @@ func main() {
 
 	startTime := time.Now()
 	var recordCount int
+	var stats Stats
 
 	for _, arg := range args {
 
@@ -57,6 +64,8 @@ func main() {
 					os.Exit(1)
 				}
 
+				stats.Events++
+
 			} else if record.Type == unified2.UNIFIED2_PACKET {
 
 				// A packet record.
@@ -66,6 +75,8 @@ func main() {
 					break
 				}
 
+				stats.Packets++
+
 			} else if record.Type == unified2.UNIFIED2_EXTRA_DATA {
 
 				// An extra data record.
@@ -74,6 +85,8 @@ func main() {
 					fmt.Println("error decoding extra data:", err)
 					break
 				}
+
+				stats.ExtraData++
 
 			}
 		}
@@ -86,4 +99,6 @@ func main() {
 
 	fmt.Printf("Records: %d; Time: %s; Records/sec: %d\n",
 		recordCount, elapsedTime, int(perSecond))
+	fmt.Printf("  Events: %d; Packets: %d; ExtraData: %d\n",
+		stats.Events, stats.Packets, stats.ExtraData)
 }
