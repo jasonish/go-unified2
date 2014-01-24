@@ -1,8 +1,4 @@
-// Example of reading individual unified2 records.
-//
-// For benchmarking record's per second use -quiet. To benchmark just
-// the record reading without decoding also use -nodecode.
-
+// Benchmark reading and decoding unified2 records.
 package main
 
 import "os"

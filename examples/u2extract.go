@@ -1,8 +1,5 @@
-// u2extract
-//
 // Extract events from a unified2 log file with the specified event-id
 // and event-second.
-
 package main
 
 import "os"
@@ -76,7 +73,7 @@ func main() {
 			}
 
 			if unified2.IsEventType(raw.Type) {
-				event, err := unified2.DecodeEvent(raw.Type, raw.Data)
+				event, err := unified2.DecodeEventRecord(raw.Type, raw.Data)
 				if err != nil {
 					log.Fatalf("failed to decode event")
 				}

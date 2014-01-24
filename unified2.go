@@ -24,9 +24,43 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-// Package unified2 implements functions for reading SNORT(R) unified2
-// log files.
+/*
 
+Package unified2 provides a decoder for unified v2 log files
+produced by Snort and Suricata.
+
+Example usage:
+
+    func main() {
+
+    	file, err := os.Open(os.Args[1])
+    	if err != nil {
+    		log.Fatal(err)
+    	}
+
+    	for {
+    		recordHolder, err := unified2.ReadRecord(file)
+    		if err != nil {
+    			if err == io.EOF {
+    				break
+    			}
+    			log.Fatal(err)
+    		}
+
+    		switch record := recordHolder.Record.(type) {
+    		case *unified2.EventRecord:
+    			log.Printf("Event: EventId=%d\n", record.EventId)
+    		case *unified2.ExtraDataRecord:
+    			log.Printf("- Extra Data: EventId=%d\n", record.EventId)
+    		case *unified2.PacketRecord:
+    			log.Printf("- Packet: EventId=%d\n", record.EventId)
+    		}
+    	}
+
+    	file.Close()
+    }
+
+*/
 package unified2
 
 import (
@@ -36,6 +70,7 @@ import (
 	"os"
 )
 
+// Unified2 record types.
 const (
 	UNIFIED2_PACKET           = 2
 	UNIFIED2_IDS_EVENT        = 7
@@ -45,26 +80,23 @@ const (
 	UNIFIED2_EXTRA_DATA       = 110
 )
 
-/* A raw unified2 record header. */
-type rawHeader struct {
+// RawHeader is the raw unified2 record header.
+type RawHeader struct {
 	Type uint32
 	Len  uint32
 }
 
+// RawRecord is a holder type for a raw un-decoded record.
 type RawRecord struct {
 	Type uint32
 	Data []byte
 }
 
-type RecordContainer struct {
-
-	/* The record type. */
-	Type uint32
-
-	/* The decoded record. */
-	Record interface{}
-}
-
+// EventRecord is a struct representing a decoded event record.
+//
+// This struct is used to represent the decoded form of all the event
+// types.  The difference between an IPv4 and IPv6 event will be the
+// length of the IP address IpSource and IpDestination.
 type EventRecord struct {
 	SensorId          uint32
 	EventId           uint32
@@ -87,6 +119,7 @@ type EventRecord struct {
 	VlanId            uint16
 }
 
+// PacketRecord is a struct representing a decoded packet record.
 type PacketRecord struct {
 	SensorId          uint32
 	EventId           uint32
@@ -98,8 +131,10 @@ type PacketRecord struct {
 	Data              []byte
 }
 
+// The length of a PacketRecord before variable length data.
 const PACKET_RECORD_HDR_LEN = 28
 
+// ExtraDataRecord is a struct representing a decoded extra data record.
 type ExtraDataRecord struct {
 	EventType   uint32
 	EventLength uint32
@@ -112,12 +147,29 @@ type ExtraDataRecord struct {
 	Data        []byte
 }
 
+// The length of an ExtraDataRecord before variable length data.
 const EXTRA_DATA_RECORD_HDR_LEN = 32
 
+// RecordContainer is a container struct for decoded records.
+type RecordContainer struct {
+
+	//The record type.
+	Type uint32
+
+	// The decoded record. One of EventRecord, PacketRecord or
+	// ExtraDataRecord.
+	Record interface{}
+}
+
+// Helper function for reading binary data as all reads are big
+// endian.
 func read(reader io.Reader, data interface{}) error {
 	return binary.Read(reader, binary.BigEndian, data)
 }
 
+// IsEventType checks if a record type is an event type or not.  It
+// returns true if the recordType is an event type, otherwise false
+// will be returned.
 func IsEventType(recordType uint32) bool {
 	switch recordType {
 	case UNIFIED2_IDS_EVENT,
@@ -130,7 +182,11 @@ func IsEventType(recordType uint32) bool {
 	}
 }
 
-func DecodeEvent(eventType uint32, data []byte) (event *EventRecord, err error) {
+// DecodeEventRecord decodes a raw record into an EventRecord.
+//
+// This function will decode any of the event record types.
+func DecodeEventRecord(
+	eventType uint32, data []byte) (event *EventRecord, err error) {
 
 	event = &EventRecord{}
 
@@ -229,8 +285,8 @@ func DecodeEvent(eventType uint32, data []byte) (event *EventRecord, err error) 
 		return nil, err
 	}
 
-	if eventType == UNIFIED2_IDS_EVENT_V2 ||
-		eventType == UNIFIED2_IDS_EVENT_IP6_V2 {
+	switch eventType {
+	case UNIFIED2_IDS_EVENT_V2, UNIFIED2_IDS_EVENT_IP6_V2:
 
 		/* MplsLabel. */
 		if err = read(reader, &event.MplsLabel); err != nil {
@@ -241,12 +297,15 @@ func DecodeEvent(eventType uint32, data []byte) (event *EventRecord, err error) 
 		if err = read(reader, &event.VlanId); err != nil {
 			return nil, err
 		}
+
 	}
 
 	return event, nil
 }
 
-func DecodePacket(data []byte) (packet *PacketRecord, err error) {
+// DecodePacketRecord decodes a raw unified2 record into a
+// PacketRecord.
+func DecodePacketRecord(data []byte) (packet *PacketRecord, err error) {
 
 	packet = &PacketRecord{}
 
@@ -292,7 +351,9 @@ func DecodePacket(data []byte) (packet *PacketRecord, err error) {
 	return packet, nil
 }
 
-func DecodeExtraData(data []byte) (extra *ExtraDataRecord, err error) {
+// DecodeExtraDataRecord decodes a raw extra data record into an
+// ExtraDataRecord.
+func DecodeExtraDataRecord(data []byte) (extra *ExtraDataRecord, err error) {
 
 	extra = &ExtraDataRecord{}
 
@@ -335,9 +396,9 @@ func DecodeExtraData(data []byte) (extra *ExtraDataRecord, err error) {
 	return extra, nil
 }
 
-// Read a raw record from the input file.
+// ReadRawRecord reads a raw record from the provided file.
 func ReadRawRecord(file *os.File) (*RawRecord, error) {
-	var header rawHeader
+	var header RawHeader
 
 	/* Get the current offset so we can seek back to it. */
 	offset, _ := file.Seek(0, 1)
@@ -366,7 +427,7 @@ func ReadRawRecord(file *os.File) (*RawRecord, error) {
 	return &RawRecord{header.Type, data}, nil
 }
 
-// Read and decode a record from the input file.
+// ReadRecord reads and decodes a record from the provided file.
 func ReadRecord(file *os.File) (*RecordContainer, error) {
 
 	record, err := ReadRawRecord(file)
@@ -381,11 +442,11 @@ func ReadRecord(file *os.File) (*RecordContainer, error) {
 		UNIFIED2_IDS_EVENT_IP6,
 		UNIFIED2_IDS_EVENT_V2,
 		UNIFIED2_IDS_EVENT_IP6_V2:
-		decoded, err = DecodeEvent(record.Type, record.Data)
+		decoded, err = DecodeEventRecord(record.Type, record.Data)
 	case UNIFIED2_PACKET:
-		decoded, err = DecodePacket(record.Data)
+		decoded, err = DecodePacketRecord(record.Data)
 	case UNIFIED2_EXTRA_DATA:
-		decoded, err = DecodeExtraData(record.Data)
+		decoded, err = DecodeExtraDataRecord(record.Data)
 	}
 
 	if err != nil {
