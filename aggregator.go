@@ -28,16 +28,28 @@ package unified2
 
 import "container/list"
 
+// EventAggregator is used to aggregate records into events.
 type EventAggregator struct {
 	buffer *list.List
 }
 
+// Pop returns and removes the first record from the aggregator.
+func (ea EventAggregator) pop() *RecordContainer {
+	record := ea.buffer.Front()
+	ea.buffer.Remove(record)
+	return record.Value.(*RecordContainer)
+}
+
+// NewEventAggregator creates a new EventAggregator.
 func NewEventAggregator() *EventAggregator {
 	aggregator := new(EventAggregator)
 	aggregator.buffer = list.New()
 	return aggregator
 }
 
+// Add adds a record to the event aggregated returning an array of
+// records comprising a single event if the new record is the start of
+// a new event.
 func (ea EventAggregator) Add(record *RecordContainer) []*RecordContainer {
 
 	var event []*RecordContainer = nil
@@ -52,22 +64,19 @@ func (ea EventAggregator) Add(record *RecordContainer) []*RecordContainer {
 	return event
 }
 
-func (a EventAggregator) Len() int {
-	return a.buffer.Len()
+// Len returns the number of records currently in the aggregator.
+func (ea EventAggregator) Len() int {
+	return ea.buffer.Len()
 }
 
-func (ea EventAggregator) Pop() *RecordContainer {
-	record := ea.buffer.Front()
-	ea.buffer.Remove(record)
-	return record.Value.(*RecordContainer)
-}
-
+// Flush removes all records from the aggregator returning them as an
+// array.
 func (ea EventAggregator) Flush() []*RecordContainer {
 
 	event := make([]*RecordContainer, ea.buffer.Len())
 
 	for key, _ := range event {
-		event[key] = ea.Pop()
+		event[key] = ea.pop()
 	}
 
 	return event
