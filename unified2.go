@@ -161,7 +161,7 @@ type RecordContainer struct {
 	Record interface{}
 }
 
-var DecodingError = errors.New("decoding error")
+var DecodingError = errors.New("DecodingError")
 
 // Helper function for reading binary data as all reads are big
 // endian.
@@ -196,41 +196,41 @@ func DecodeEventRecord(
 
 	// SensorId
 	if err = read(reader, &event.SensorId); err != nil {
-		return nil, err
+		goto error
 	}
 	if err = read(reader, &event.EventId); err != nil {
-		return nil, err
+		goto error
 	}
 	if err = read(reader, &event.EventSecond); err != nil {
-		return nil, err
+		goto error
 	}
 	if err = read(reader, &event.EventMicrosecond); err != nil {
-		return nil, err
+		goto error
 	}
 
 	/* SignatureId */
 	if err = read(reader, &event.SignatureId); err != nil {
-		return nil, err
+		goto error
 	}
 
 	/* GeneratorId */
 	if err = read(reader, &event.GeneratorId); err != nil {
-		return nil, err
+		goto error
 	}
 
 	/* SignatureRevision */
 	if err = read(reader, &event.SignatureRevision); err != nil {
-		return nil, err
+		goto error
 	}
 
 	/* ClassificationId */
 	if err = read(reader, &event.ClassificationId); err != nil {
-		return nil, err
+		goto error
 	}
 
 	/* Priority */
 	if err = read(reader, &event.Priority); err != nil {
-		return nil, err
+		goto error
 	}
 
 	/* Source and destination IP addresses. */
@@ -239,52 +239,52 @@ func DecodeEventRecord(
 	case UNIFIED2_IDS_EVENT, UNIFIED2_IDS_EVENT_V2:
 		event.IpSource = make([]byte, 4)
 		if err = read(reader, &event.IpSource); err != nil {
-			return nil, err
+			goto error
 		}
 		event.IpDestination = make([]byte, 4)
 		if err = read(reader, &event.IpDestination); err != nil {
-			return nil, err
+			goto error
 		}
 
 	case UNIFIED2_IDS_EVENT_IP6, UNIFIED2_IDS_EVENT_IP6_V2:
 		event.IpSource = make([]byte, 16)
 		if err = read(reader, &event.IpSource); err != nil {
-			return nil, err
+			goto error
 		}
 		event.IpDestination = make([]byte, 16)
 		if err = read(reader, &event.IpDestination); err != nil {
-			return nil, err
+			goto error
 		}
 	}
 
 	/* Source port/ICMP type. */
 	if err = read(reader, &event.SportItype); err != nil {
-		return nil, err
+		goto error
 	}
 
 	/* Destination port/ICMP code. */
 	if err = read(reader, &event.DportIcode); err != nil {
-		return nil, err
+		goto error
 	}
 
 	/* Protocol. */
 	if err = read(reader, &event.Protocol); err != nil {
-		return nil, err
+		goto error
 	}
 
 	/* Impact flag. */
 	if err = read(reader, &event.ImpactFlag); err != nil {
-		return nil, err
+		goto error
 	}
 
 	/* Impact. */
 	if err = read(reader, &event.Impact); err != nil {
-		return nil, err
+		goto error
 	}
 
 	/* Blocked. */
 	if err = read(reader, &event.Blocked); err != nil {
-		return nil, err
+		goto error
 	}
 
 	switch eventType {
@@ -292,17 +292,20 @@ func DecodeEventRecord(
 
 		/* MplsLabel. */
 		if err = read(reader, &event.MplsLabel); err != nil {
-			return nil, err
+			goto error
 		}
 
 		/* VlanId. */
 		if err = read(reader, &event.VlanId); err != nil {
-			return nil, err
+			goto error
 		}
 
 	}
 
 	return event, nil
+
+error:
+	return nil, DecodingError
 }
 
 // DecodePacketRecord decodes a raw unified2 record into a
@@ -313,44 +316,40 @@ func DecodePacketRecord(data []byte) (packet *PacketRecord, err error) {
 
 	reader := bytes.NewBuffer(data)
 
-	err = read(reader, &packet.SensorId)
-	if err != nil {
-		return nil, err
+	if err = read(reader, &packet.SensorId); err != nil {
+		goto error
 	}
 
-	err = read(reader, &packet.EventId)
-	if err != nil {
-		return nil, err
+	if err = read(reader, &packet.EventId); err != nil {
+		goto error
 	}
 
-	err = read(reader, &packet.EventSecond)
-	if err != nil {
-		return nil, err
+	if err = read(reader, &packet.EventSecond); err != nil {
+		goto error
 	}
 
-	err = read(reader, &packet.PacketSecond)
-	if err != nil {
-		return nil, err
+	if err = read(reader, &packet.PacketSecond); err != nil {
+		goto error
 	}
 
-	err = read(reader, &packet.PacketMicrosecond)
-	if err != nil {
-		return nil, err
+	if err = read(reader, &packet.PacketMicrosecond); err != nil {
+		goto error
 	}
 
-	err = read(reader, &packet.LinkType)
-	if err != nil {
-		return nil, err
+	if err = read(reader, &packet.LinkType); err != nil {
+		goto error
 	}
 
-	err = read(reader, &packet.Length)
-	if err != nil {
-		return nil, err
+	if err = read(reader, &packet.Length); err != nil {
+		goto error
 	}
 
 	packet.Data = data[PACKET_RECORD_HDR_LEN:]
 
 	return packet, nil
+
+error:
+	return nil, DecodingError
 }
 
 // DecodeExtraDataRecord decodes a raw extra data record into an
@@ -362,40 +361,43 @@ func DecodeExtraDataRecord(data []byte) (extra *ExtraDataRecord, err error) {
 	reader := bytes.NewBuffer(data)
 
 	if err = read(reader, &extra.EventType); err != nil {
-		return nil, err
+		goto error
 	}
 
 	if err = read(reader, &extra.EventLength); err != nil {
-		return nil, err
+		goto error
 	}
 
 	if err = read(reader, &extra.SensorId); err != nil {
-		return nil, err
+		goto error
 	}
 
 	if err = read(reader, &extra.EventId); err != nil {
-		return nil, err
+		goto error
 	}
 
 	if err = read(reader, &extra.EventSecond); err != nil {
-		return nil, err
+		goto error
 	}
 
 	if err = read(reader, &extra.Type); err != nil {
-		return nil, err
+		goto error
 	}
 
 	if err = read(reader, &extra.DataType); err != nil {
-		return nil, err
+		goto error
 	}
 
 	if err = read(reader, &extra.DataLength); err != nil {
-		return nil, err
+		goto error
 	}
 
 	extra.Data = data[EXTRA_DATA_RECORD_HDR_LEN:]
 
 	return extra, nil
+
+error:
+	return nil, DecodingError
 }
 
 // ReadRawRecord reads a raw record from the provided file.
@@ -458,7 +460,7 @@ func ReadRecord(file io.ReadWriteSeeker) (*RecordContainer, error) {
 		return nil, err
 	}
 
-	var decoded interface{} = nil
+	var decoded interface{}
 
 	switch record.Type {
 	case UNIFIED2_IDS_EVENT,
@@ -473,7 +475,7 @@ func ReadRecord(file io.ReadWriteSeeker) (*RecordContainer, error) {
 	}
 
 	if err != nil {
-		return nil, DecodingError
+		return nil, err
 	} else if decoded != nil {
 		return &RecordContainer{record.Type, decoded}, nil
 	} else {

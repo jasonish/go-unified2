@@ -32,7 +32,7 @@ func LoadRecordsFromFile(filename string) ([]*RecordContainer, error) {
 	// Return as an array.
 	records := make([]*RecordContainer, buffer.Len())
 	record := buffer.Front()
-	for key, _ := range records {
+	for key := range records {
 		records[key] = record.Value.(*RecordContainer)
 		record = record.Next()
 	}

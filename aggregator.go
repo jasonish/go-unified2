@@ -52,7 +52,7 @@ func NewEventAggregator() *EventAggregator {
 // a new event.
 func (ea EventAggregator) Add(record *RecordContainer) []*RecordContainer {
 
-	var event []*RecordContainer = nil
+	var event []*RecordContainer
 
 	// Check if we need to flush.
 	if IsEventType(record.Type) && ea.buffer.Len() > 0 {
@@ -75,7 +75,7 @@ func (ea EventAggregator) Flush() []*RecordContainer {
 
 	event := make([]*RecordContainer, ea.buffer.Len())
 
-	for key, _ := range event {
+	for key := range event {
 		event[key] = ea.pop()
 	}
 

@@ -8,7 +8,7 @@ import "flag"
 import "time"
 import "github.com/jasonish/go-unified2"
 
-type Stats struct {
+type stats struct {
 	Events    int
 	Packets   int
 	ExtraData int
@@ -21,7 +21,7 @@ func main() {
 
 	startTime := time.Now()
 	var recordCount int
-	var stats Stats
+	var stats stats
 	for _, arg := range args {
 
 		fmt.Println("Opening", arg)

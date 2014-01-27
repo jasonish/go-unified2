@@ -24,7 +24,11 @@ func ExampleReadRecord() {
 				//
 				// Lets break for the purpose of this example.
 				break
+			} else if err == unified2.DecodingError {
+				// Error decoding a record, probably corrupt.
+				log.Fatal(err)
 			}
+			// Some other error.
 			log.Fatal(err)
 		}
 
