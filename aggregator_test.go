@@ -7,7 +7,7 @@ import "io"
 import "log"
 
 // Load unified2 records from a file, returning them as an array.
-func LoadRecordsFromFile(filename string) ([]*RecordContainer, error) {
+func LoadRecordsFromFile(filename string) ([]interface{}, error) {
 
 	input, err := os.Open(filename)
 	if err != nil {
@@ -30,10 +30,10 @@ func LoadRecordsFromFile(filename string) ([]*RecordContainer, error) {
 	input.Close()
 
 	// Return as an array.
-	records := make([]*RecordContainer, buffer.Len())
+	records := make([]interface{}, buffer.Len())
 	record := buffer.Front()
 	for key := range records {
-		records[key] = record.Value.(*RecordContainer)
+		records[key] = record.Value.(interface{})
 		record = record.Next()
 	}
 
@@ -96,9 +96,9 @@ func TestCompleteEvent(t *testing.T) {
 
 	// To signal the aggregator to flush, we'll mock up an event with
 	// a new event-id.
-	record := *(records[0]).Record.(*EventRecord)
+	record := *(records[0]).(*EventRecord)
 	record.EventId++
-	event := aggregator.Add(&RecordContainer{UNIFIED2_IDS_EVENT_V2, &record})
+	event := aggregator.Add(&record)
 	if event == nil {
 		t.Fatalf("expected event records to be returned")
 	}

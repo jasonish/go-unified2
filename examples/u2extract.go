@@ -72,7 +72,11 @@ func main() {
 				log.Fatal(err)
 			}
 
-			if unified2.IsEventType(raw.Type) {
+			switch raw.Type {
+			case unified2.UNIFIED2_IDS_EVENT,
+				unified2.UNIFIED2_IDS_EVENT_IP6,
+				unified2.UNIFIED2_IDS_EVENT_V2,
+				unified2.UNIFIED2_IDS_EVENT_IP6_V2:
 				event, err := unified2.DecodeEventRecord(raw.Type, raw.Data)
 				if err != nil {
 					log.Fatalf("failed to decode event")

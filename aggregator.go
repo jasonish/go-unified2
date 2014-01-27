@@ -34,10 +34,10 @@ type EventAggregator struct {
 }
 
 // Pop returns and removes the first record from the aggregator.
-func (ea EventAggregator) pop() *RecordContainer {
+func (ea EventAggregator) pop() interface{} {
 	record := ea.buffer.Front()
 	ea.buffer.Remove(record)
-	return record.Value.(*RecordContainer)
+	return record.Value
 }
 
 // NewEventAggregator creates a new EventAggregator.
@@ -50,12 +50,12 @@ func NewEventAggregator() *EventAggregator {
 // Add adds a record to the event aggregated returning an array of
 // records comprising a single event if the new record is the start of
 // a new event.
-func (ea EventAggregator) Add(record *RecordContainer) []*RecordContainer {
+func (ea EventAggregator) Add(record interface{}) []interface{} {
 
-	var event []*RecordContainer
+	var event []interface{}
 
 	// Check if we need to flush.
-	if IsEventType(record.Type) && ea.buffer.Len() > 0 {
+	if _, ok := record.(*EventRecord); ea.Len() > 0 && ok {
 		event = ea.Flush()
 	}
 
@@ -71,9 +71,9 @@ func (ea EventAggregator) Len() int {
 
 // Flush removes all records from the aggregator returning them as an
 // array.
-func (ea EventAggregator) Flush() []*RecordContainer {
+func (ea EventAggregator) Flush() []interface{} {
 
-	event := make([]*RecordContainer, ea.buffer.Len())
+	event := make([]interface{}, ea.buffer.Len())
 
 	for key := range event {
 		event[key] = ea.pop()

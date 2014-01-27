@@ -29,36 +29,9 @@
 Package unified2 provides a decoder for unified v2 log files
 produced by Snort and Suricata.
 
-Example usage:
-
-    func main() {
-
-    	file, err := os.Open(os.Args[1])
-    	if err != nil {
-    		log.Fatal(err)
-    	}
-
-    	for {
-    		recordHolder, err := unified2.ReadRecord(file)
-    		if err != nil {
-    			if err == io.EOF {
-    				break
-    			}
-    			log.Fatal(err)
-    		}
-
-    		switch record := recordHolder.Record.(type) {
-    		case *unified2.EventRecord:
-    			log.Printf("Event: EventId=%d\n", record.EventId)
-    		case *unified2.ExtraDataRecord:
-    			log.Printf("- Extra Data: EventId=%d\n", record.EventId)
-    		case *unified2.PacketRecord:
-    			log.Printf("- Packet: EventId=%d\n", record.EventId)
-    		}
-    	}
-
-    	file.Close()
-    }
+Current the unified2 package provides:
+- Unified2 record decoders.
+- A record aggregator to aggregate records into an event.
 
 */
 package unified2
@@ -150,38 +123,17 @@ type ExtraDataRecord struct {
 // The length of an ExtraDataRecord before variable length data.
 const EXTRA_DATA_RECORD_HDR_LEN = 32
 
-// RecordContainer is a container struct for decoded records.
-type RecordContainer struct {
-
-	//The record type.
-	Type uint32
-
-	// The decoded record. One of EventRecord, PacketRecord or
-	// ExtraDataRecord.
-	Record interface{}
-}
-
+// DecodingError is the error returned if an error is encountered
+// while decoding a record buffer.
+//
+// We use this error to differentiate between file level reading
+// errors.
 var DecodingError = errors.New("DecodingError")
 
 // Helper function for reading binary data as all reads are big
 // endian.
 func read(reader io.Reader, data interface{}) error {
 	return binary.Read(reader, binary.BigEndian, data)
-}
-
-// IsEventType checks if a record type is an event type or not.  It
-// returns true if the recordType is an event type, otherwise false
-// will be returned.
-func IsEventType(recordType uint32) bool {
-	switch recordType {
-	case UNIFIED2_IDS_EVENT,
-		UNIFIED2_IDS_EVENT_IP6,
-		UNIFIED2_IDS_EVENT_V2,
-		UNIFIED2_IDS_EVENT_IP6_V2:
-		return true
-	default:
-		return false
-	}
 }
 
 // DecodeEventRecord decodes a raw record into an EventRecord.
@@ -439,7 +391,8 @@ func ReadRawRecord(file io.ReadWriteSeeker) (*RawRecord, error) {
 	return &RawRecord{header.Type, data}, nil
 }
 
-// ReadRecord reads and decodes a record from the provided file.
+// ReadRecord reads a record from the provided file and returns a
+// decoded record.
 //
 // On error, err will no non-nil.  Expected error values are io.EOF
 // when the end of the file has been reached or io.ErrUnexpectedEOF if
@@ -453,7 +406,7 @@ func ReadRawRecord(file io.ReadWriteSeeker) (*RawRecord, error) {
 // If an error occurred during decoding of the read data a
 // DecodingError will be returned.  This likely means the input is
 // corrupt.
-func ReadRecord(file io.ReadWriteSeeker) (*RecordContainer, error) {
+func ReadRecord(file io.ReadWriteSeeker) (interface{}, error) {
 
 	record, err := ReadRawRecord(file)
 	if err != nil {
@@ -477,7 +430,7 @@ func ReadRecord(file io.ReadWriteSeeker) (*RecordContainer, error) {
 	if err != nil {
 		return nil, err
 	} else if decoded != nil {
-		return &RecordContainer{record.Type, decoded}, nil
+		return decoded, nil
 	} else {
 		// Unknown record type.
 		return nil, nil

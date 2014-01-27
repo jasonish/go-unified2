@@ -15,7 +15,7 @@ func ExampleReadRecord() {
 
 	// Read records.
 	for {
-		recordHolder, err := unified2.ReadRecord(file)
+		record, err := unified2.ReadRecord(file)
 		if err != nil {
 			if err == io.EOF || err == io.ErrUnexpectedEOF {
 				// End of file is reached.  You may want to break here
@@ -32,7 +32,7 @@ func ExampleReadRecord() {
 			log.Fatal(err)
 		}
 
-		switch record := recordHolder.Record.(type) {
+		switch record := record.(type) {
 		case *unified2.EventRecord:
 			log.Printf("Event: EventId=%d\n", record.EventId)
 		case *unified2.ExtraDataRecord:

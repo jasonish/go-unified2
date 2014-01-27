@@ -22,7 +22,7 @@ func ExampleEventAggregator() {
 	// Submit records to the aggregator, it will return non-nil when a
 	// complete event has been seen.
 	for {
-		recordHolder, err := unified2.ReadRecord(file)
+		record, err := unified2.ReadRecord(file)
 		if err != nil {
 			if err == io.EOF {
 				break
@@ -31,7 +31,7 @@ func ExampleEventAggregator() {
 			log.Fatal(err)
 		}
 
-		event := aggregator.Add(recordHolder)
+		event := aggregator.Add(record)
 		if event != nil {
 			log.Printf("We have an event consisting of %d records.\n",
 				len(event))

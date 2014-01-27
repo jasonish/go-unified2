@@ -41,18 +41,13 @@ func main() {
 			}
 			recordCount++
 
-			if unified2.IsEventType(record.Type) {
-
+			switch record.(type) {
+			case *unified2.EventRecord:
 				stats.Events++
-
-			} else if record.Type == unified2.UNIFIED2_PACKET {
-
+			case *unified2.PacketRecord:
 				stats.Packets++
-
-			} else if record.Type == unified2.UNIFIED2_EXTRA_DATA {
-
+			case *unified2.ExtraDataRecord:
 				stats.ExtraData++
-
 			}
 		}
 
