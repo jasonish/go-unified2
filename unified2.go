@@ -66,8 +66,8 @@ package unified2
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"io"
-	"os"
 )
 
 // Unified2 record types.
@@ -160,6 +160,8 @@ type RecordContainer struct {
 	// ExtraDataRecord.
 	Record interface{}
 }
+
+var DecodingError = errors.New("decoding error")
 
 // Helper function for reading binary data as all reads are big
 // endian.
@@ -397,7 +399,16 @@ func DecodeExtraDataRecord(data []byte) (extra *ExtraDataRecord, err error) {
 }
 
 // ReadRawRecord reads a raw record from the provided file.
-func ReadRawRecord(file *os.File) (*RawRecord, error) {
+//
+// On error, err will no non-nil.  Expected error values are io.EOF
+// when the end of the file has been reached or io.ErrUnexpectedEOF if
+// a complete record was unable to be read.
+//
+// In the case of io.ErrUnexpectedEOF the file offset will be reset
+// back to where it was upon entering this function so it is ready to
+// be read from again if it is expected more data will be written to
+// the file.
+func ReadRawRecord(file io.ReadWriteSeeker) (*RawRecord, error) {
 	var header RawHeader
 
 	/* Get the current offset so we can seek back to it. */
@@ -413,22 +424,34 @@ func ReadRawRecord(file *os.File) (*RawRecord, error) {
 	/* Create a buffer to hold the raw record data and read the
 	/* record data into it */
 	data := make([]byte, header.Len)
-	len, err := file.Read(data)
-	if uint32(len) < header.Len {
-		/* Didn't read enough data. The error io.ErrShortBuffer seems
-		/* to make sense here. */
-		file.Seek(offset, 0)
-		return nil, io.ErrShortBuffer
-	} else if err != nil {
+	n, err := file.Read(data)
+	if err != nil {
 		file.Seek(offset, 0)
 		return nil, err
+	}
+	if uint32(n) != header.Len {
+		file.Seek(offset, 0)
+		return nil, io.ErrUnexpectedEOF
 	}
 
 	return &RawRecord{header.Type, data}, nil
 }
 
 // ReadRecord reads and decodes a record from the provided file.
-func ReadRecord(file *os.File) (*RecordContainer, error) {
+//
+// On error, err will no non-nil.  Expected error values are io.EOF
+// when the end of the file has been reached or io.ErrUnexpectedEOF if
+// a complete record was unable to be read.
+//
+// In the case of io.ErrUnexpectedEOF the file offset will be reset
+// back to where it was upon entering this function so it is ready to
+// be read from again if it is expected more data will be written to
+// the file.
+//
+// If an error occurred during decoding of the read data a
+// DecodingError will be returned.  This likely means the input is
+// corrupt.
+func ReadRecord(file io.ReadWriteSeeker) (*RecordContainer, error) {
 
 	record, err := ReadRawRecord(file)
 	if err != nil {
@@ -450,7 +473,7 @@ func ReadRecord(file *os.File) (*RecordContainer, error) {
 	}
 
 	if err != nil {
-		return nil, err
+		return nil, DecodingError
 	} else if decoded != nil {
 		return &RecordContainer{record.Type, decoded}, nil
 	} else {
