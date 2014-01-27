@@ -29,9 +29,9 @@
 Package unified2 provides a decoder for unified v2 log files
 produced by Snort and Suricata.
 
-Current the unified2 package provides:
-- Unified2 record decoders.
-- A record aggregator to aggregate records into an event.
+Currently the unified2 package provides:
+    - Unified2 record decoders.
+    - A record aggregator to aggregate records into an event.
 
 */
 package unified2
