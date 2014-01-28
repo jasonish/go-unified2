@@ -1,10 +1,11 @@
 package unified2
 
-import "testing"
-import "container/list"
-import "os"
-import "io"
-import "log"
+import (
+	"container/list"
+	"io"
+	"os"
+	"testing"
+)
 
 // Load unified2 records from a file, returning them as an array.
 func LoadRecordsFromFile(filename string) ([]interface{}, error) {
@@ -47,7 +48,6 @@ func TestSimpleAddFlush(t *testing.T) {
 	if err != nil {
 		t.Fail()
 	}
-	log.Printf("Loaded %d records.\n", len(records))
 	if len(records) != 17 {
 		t.Fatalf("Loaded %d records, expected 17.\n", len(records))
 	}
@@ -78,7 +78,6 @@ func TestCompleteEvent(t *testing.T) {
 	if err != nil {
 		t.Fail()
 	}
-	log.Printf("Loaded %d records.\n", len(records))
 	if len(records) != 17 {
 		t.Fatalf("Loaded %d records, expected 17.\n", len(records))
 	}

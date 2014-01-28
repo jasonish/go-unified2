@@ -1,8 +1,8 @@
 package unified2_test
 
-import "os"
-import "log"
+import "fmt"
 import "io"
+import "log"
 import "github.com/jasonish/go-unified2"
 
 // EventAggregator example.
@@ -11,10 +11,8 @@ func ExampleEventAggregator() {
 	// Create the aggregator.
 	aggregator := unified2.NewEventAggregator()
 
-	// Open a file.  Note that the aggregator is meant to span the
-	// input of multiple files, as the records that make up a single
-	// event may span multiple files.
-	file, err := os.Open("merged.log")
+	// Use a RecordReader to read records from a file.
+	reader, err := unified2.NewRecordReader("test/multi-record-event-x2.log", 0)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -22,7 +20,7 @@ func ExampleEventAggregator() {
 	// Submit records to the aggregator, it will return non-nil when a
 	// complete event has been seen.
 	for {
-		record, err := unified2.ReadRecord(file)
+		record, err := reader.Next()
 		if err != nil {
 			if err == io.EOF {
 				break
@@ -31,9 +29,12 @@ func ExampleEventAggregator() {
 			log.Fatal(err)
 		}
 
+		// Add the record to the aggregator.  If the records signals
+		// that start of a new event, the previous event will be
+		// returned as an array of records.
 		event := aggregator.Add(record)
 		if event != nil {
-			log.Printf("We have an event consisting of %d records.\n",
+			fmt.Printf("Got event consisting of %d records.\n",
 				len(event))
 		}
 	}
@@ -42,10 +43,13 @@ func ExampleEventAggregator() {
 	// flushed, so check.
 	event := aggregator.Flush()
 	if event != nil {
-		log.Printf("Final event flushed\n")
+		fmt.Printf("Flushed pending event of %d records.\n", len(event))
 	} else {
 		// Unlikely to happen.
-		log.Printf("No remaining events.")
+		log.Printf("No remaining events.\n")
 	}
 
+	// Output:
+	// Got event consisting of 17 records.
+	// Flushed pending event of 17 records.
 }
