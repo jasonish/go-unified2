@@ -26,27 +26,14 @@
 
 package unified2
 
-import (
-	"container/list"
-)
-
 // EventAggregator is used to aggregate records into events.
 type EventAggregator struct {
-	buffer *list.List
-}
-
-// Pop returns and removes the first record from the aggregator.
-func (ea *EventAggregator) pop() interface{} {
-	record := ea.buffer.Front()
-	ea.buffer.Remove(record)
-	return record.Value
+	records []interface{}
 }
 
 // NewEventAggregator creates a new EventAggregator.
 func NewEventAggregator() *EventAggregator {
-	aggregator := new(EventAggregator)
-	aggregator.buffer = list.New()
-	return aggregator
+	return &EventAggregator{}
 }
 
 // Add adds a record to the event aggregated returning an array of
@@ -71,14 +58,14 @@ func (ea *EventAggregator) Add(record interface{}) []interface{} {
 		event = ea.Flush()
 	}
 
-	ea.buffer.PushBack(record)
+	ea.records = append(ea.records, record)
 
 	return event
 }
 
 // Len returns the number of records currently in the aggregator.
 func (ea *EventAggregator) Len() int {
-	return ea.buffer.Len()
+	return len(ea.records)
 }
 
 // Flush removes all records from the aggregator returning them as an
@@ -89,11 +76,9 @@ func (ea *EventAggregator) Flush() []interface{} {
 		return nil
 	}
 
-	event := make([]interface{}, ea.buffer.Len())
-
-	for key := range event {
-		event[key] = ea.pop()
-	}
+	event := make([]interface{}, len(ea.records))
+	copy(event, ea.records)
+	ea.records = ea.records[:0]
 
 	return event
 }
