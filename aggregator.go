@@ -56,8 +56,18 @@ func (ea *EventAggregator) Add(record interface{}) []interface{} {
 
 	var event []interface{}
 
-	// Check if we need to flush.
-	if _, ok := record.(*EventRecord); ea.Len() > 0 && ok {
+	var isEventType bool
+
+	_, isEventType = record.(*EventRecord)
+
+	if ea.Len() == 0 && !isEventType {
+		// Buffer is empty, and this is not an event record, toss it.
+		return nil
+	}
+
+	// This is an event record, flush the buffer if there are any
+	// records.
+	if isEventType && ea.Len() > 0 {
 		event = ea.Flush()
 	}
 
@@ -74,6 +84,10 @@ func (ea *EventAggregator) Len() int {
 // Flush removes all records from the aggregator returning them as an
 // array.
 func (ea *EventAggregator) Flush() []interface{} {
+
+	if ea.Len() == 0 {
+		return nil
+	}
 
 	event := make([]interface{}, ea.buffer.Len())
 
