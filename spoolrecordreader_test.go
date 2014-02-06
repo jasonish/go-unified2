@@ -48,7 +48,7 @@ func TestRecordSpoolReader_getFiles(t *testing.T) {
 	copyFile(test_filename, fmt.Sprintf("%s/merged.log.003", tmpdir))
 	copyFile(test_filename, fmt.Sprintf("%s/asdf.log.002", tmpdir))
 
-	reader := NewRecordSpoolReader(tmpdir, "merged.log")
+	reader := NewSpoolRecordReader(tmpdir, "merged.log")
 	if reader == nil {
 		t.Fatal("reader should not be nil")
 	}
@@ -74,7 +74,7 @@ func TestRecordSpoolReader(t *testing.T) {
 
 	closeHookCount := 0
 
-	reader := NewRecordSpoolReader(tmpdir, "merged.log")
+	reader := NewSpoolRecordReader(tmpdir, "merged.log")
 	if reader == nil {
 		t.Fatal("reader should not be nil")
 	}

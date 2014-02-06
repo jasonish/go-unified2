@@ -54,9 +54,9 @@ type SpoolRecordReader struct {
 	reader    *RecordReader
 }
 
-// NewRecordSpoolReader creates a new RecordSpoolReader reading files
+// NewSpoolRecordReader creates a new RecordSpoolReader reading files
 // prefixed with the provided prefix in the passed in directory.
-func NewRecordSpoolReader(directory string, prefix string) *SpoolRecordReader {
+func NewSpoolRecordReader(directory string, prefix string) *SpoolRecordReader {
 	reader := new(SpoolRecordReader)
 	reader.directory = directory
 	reader.prefix = prefix
