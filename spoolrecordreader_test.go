@@ -83,6 +83,15 @@ func TestRecordSpoolReader(t *testing.T) {
 		closeHookCount++
 	}
 
+	// Offset should return an empty string and 0.
+	filename, offset := reader.Offset()
+	if filename != "" {
+		t.Fatal(filename)
+	}
+	if offset != 0 {
+		t.Fatal(offset)
+	}
+
 	copyFile(test_filename, fmt.Sprintf("%s/merged.log.1382627900", tmpdir))
 
 	files, err := reader.getFiles()
@@ -93,9 +102,27 @@ func TestRecordSpoolReader(t *testing.T) {
 		log.Println(file.Name())
 	}
 
-	// We know the input file has 17 records, so read 17 and make sure
+	// Read the first record and check the offset.
+	record, err := reader.Next()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if record == nil {
+		t.Fatal("record is nil")
+	}
+	filename, offset = reader.Offset()
+	if filename != "merged.log.1382627900" {
+		t.Fatalf("got %s, expected %s", filename, "merged.log.1382627900")
+	}
+
+	// Offset known from previous testing.
+	if offset != 68 {
+		t.Fatal("bad offset")
+	}
+
+	// We know the input file has 17 records, so read 16 and make sure
 	// we get back a record for each call.
-	for i := 0; i < 17; i++ {
+	for i := 0; i < 16; i++ {
 		record, err := reader.Next()
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
@@ -107,7 +134,7 @@ func TestRecordSpoolReader(t *testing.T) {
 
 	// On the next call, record should be nul and we should have an
 	// error of EOF.
-	record, err := reader.Next()
+	record, err = reader.Next()
 	if record != nil || err != io.EOF {
 		t.Fatalf("unexpected results: record not nil, err not EOF")
 	}

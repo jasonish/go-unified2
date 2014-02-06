@@ -179,3 +179,13 @@ func (r *SpoolRecordReader) Next() (interface{}, error) {
 	}
 
 }
+
+// Offset returns the current filename that is being processed and its
+// read position (the offset).
+func (r *SpoolRecordReader) Offset() (string, int64) {
+	if r.reader != nil {
+		return path.Base(r.reader.Name()), r.reader.Offset()
+	} else {
+		return "", 0
+	}
+}

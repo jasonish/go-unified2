@@ -78,7 +78,7 @@ func (r *RecordReader) Close() {
 
 // Offset returns the current offset of this reader.
 func (r *RecordReader) Offset() int64 {
-	offset, err := r.File.Seek(1, 0)
+	offset, err := r.File.Seek(0, 1)
 	if err != nil {
 		return 0
 	}
