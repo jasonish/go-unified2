@@ -81,14 +81,11 @@ func TestShortReadOnBody(t *testing.T) {
 
 func TestDecodeError(t *testing.T) {
 
-	data := []byte("this should fai")
+	data := []byte("this should fail")
 
 	_, err := DecodeEventRecord(UNIFIED2_EVENT_V2, data)
 	if err == nil {
 		t.Fatal("expected non-nil error")
-	}
-	if err != DecodingError {
-		t.Fatalf("expected DecodingError, got %s", err)
 	}
 }
 
