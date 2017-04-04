@@ -29,10 +29,6 @@
 Package unified2 provides a decoder for unified v2 log files
 produced by Snort and Suricata.
 
-Currently the unified2 package provides:
-    - Unified2 record decoders.
-    - A record aggregator to aggregate records into an event.
-
 */
 package unified2
 
@@ -43,12 +39,12 @@ import (
 
 // Unified2 record types.
 const (
-	UNIFIED2_PACKET           = 2
-	UNIFIED2_IDS_EVENT        = 7
-	UNIFIED2_IDS_EVENT_IP6    = 72
-	UNIFIED2_IDS_EVENT_V2     = 104
-	UNIFIED2_IDS_EVENT_IP6_V2 = 105
-	UNIFIED2_EXTRA_DATA       = 110
+	UNIFIED2_PACKET       = 2
+	UNIFIED2_EVENT        = 7
+	UNIFIED2_EVENT_IP6    = 72
+	UNIFIED2_EVENT_V2     = 104
+	UNIFIED2_EVENT_V2_IP6 = 105
+	UNIFIED2_EXTRA_DATA   = 110
 )
 
 // RawHeader is the raw unified2 record header.
@@ -185,10 +181,10 @@ func ReadRecord(file io.ReadWriteSeeker) (interface{}, error) {
 	var decoded interface{}
 
 	switch record.Type {
-	case UNIFIED2_IDS_EVENT,
-		UNIFIED2_IDS_EVENT_IP6,
-		UNIFIED2_IDS_EVENT_V2,
-		UNIFIED2_IDS_EVENT_IP6_V2:
+	case UNIFIED2_EVENT,
+		UNIFIED2_EVENT_IP6,
+		UNIFIED2_EVENT_V2,
+		UNIFIED2_EVENT_V2_IP6:
 		decoded, err = DecodeEventRecord(record.Type, record.Data)
 	case UNIFIED2_PACKET:
 		decoded, err = DecodePacketRecord(record.Data)

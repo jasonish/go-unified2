@@ -97,7 +97,7 @@ func DecodeEventRecord(eventType uint32, data []byte) (*EventRecord, error) {
 	/* Source and destination IP addresses. */
 	switch eventType {
 
-	case UNIFIED2_IDS_EVENT, UNIFIED2_IDS_EVENT_V2:
+	case UNIFIED2_EVENT, UNIFIED2_EVENT_V2:
 		event.IpSource = make([]byte, 4)
 		if err := read(reader, &event.IpSource); err != nil {
 			goto error
@@ -107,7 +107,7 @@ func DecodeEventRecord(eventType uint32, data []byte) (*EventRecord, error) {
 			goto error
 		}
 
-	case UNIFIED2_IDS_EVENT_IP6, UNIFIED2_IDS_EVENT_IP6_V2:
+	case UNIFIED2_EVENT_IP6, UNIFIED2_EVENT_V2_IP6:
 		event.IpSource = make([]byte, 16)
 		if err := read(reader, &event.IpSource); err != nil {
 			goto error
@@ -149,7 +149,7 @@ func DecodeEventRecord(eventType uint32, data []byte) (*EventRecord, error) {
 	}
 
 	switch eventType {
-	case UNIFIED2_IDS_EVENT_V2, UNIFIED2_IDS_EVENT_IP6_V2:
+	case UNIFIED2_EVENT_V2, UNIFIED2_EVENT_V2_IP6:
 
 		/* MplsLabel. */
 		if err := read(reader, &event.MplsLabel); err != nil {

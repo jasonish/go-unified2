@@ -73,10 +73,10 @@ func main() {
 			}
 
 			switch raw.Type {
-			case unified2.UNIFIED2_IDS_EVENT,
-				unified2.UNIFIED2_IDS_EVENT_IP6,
-				unified2.UNIFIED2_IDS_EVENT_V2,
-				unified2.UNIFIED2_IDS_EVENT_IP6_V2:
+			case unified2.UNIFIED2_EVENT,
+				unified2.UNIFIED2_EVENT_IP6,
+				unified2.UNIFIED2_EVENT_V2,
+				unified2.UNIFIED2_EVENT_V2_IP6:
 				event, err := unified2.DecodeEventRecord(raw.Type, raw.Data)
 				if err != nil {
 					log.Fatalf("failed to decode event")
