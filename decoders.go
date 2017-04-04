@@ -31,6 +31,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
+	"log"
 )
 
 // DecodingError is the error returned if an error is encountered
@@ -57,116 +58,132 @@ func DecodeEventRecord(eventType uint32, data []byte) (*EventRecord, error) {
 
 	// SensorId
 	if err := read(reader, &event.SensorId); err != nil {
-		goto error
+		return nil, err
 	}
 	if err := read(reader, &event.EventId); err != nil {
-		goto error
+		return nil, err
 	}
 	if err := read(reader, &event.EventSecond); err != nil {
-		goto error
+		return nil, err
 	}
 	if err := read(reader, &event.EventMicrosecond); err != nil {
-		goto error
+		return nil, err
 	}
 
 	/* SignatureId */
 	if err := read(reader, &event.SignatureId); err != nil {
-		goto error
+		return nil, err
 	}
 
 	/* GeneratorId */
 	if err := read(reader, &event.GeneratorId); err != nil {
-		goto error
+		return nil, err
 	}
 
 	/* SignatureRevision */
 	if err := read(reader, &event.SignatureRevision); err != nil {
-		goto error
+		return nil, err
 	}
 
 	/* ClassificationId */
 	if err := read(reader, &event.ClassificationId); err != nil {
-		goto error
+		return nil, err
 	}
 
 	/* Priority */
 	if err := read(reader, &event.Priority); err != nil {
-		goto error
+		return nil, err
 	}
 
 	/* Source and destination IP addresses. */
 	switch eventType {
 
-	case UNIFIED2_EVENT, UNIFIED2_EVENT_V2:
+	case UNIFIED2_EVENT, UNIFIED2_EVENT_V2, UNIFIED2_EVENT_APPID:
 		event.IpSource = make([]byte, 4)
 		if err := read(reader, &event.IpSource); err != nil {
-			goto error
+			log.Fatal(err)
+			return nil, err
 		}
 		event.IpDestination = make([]byte, 4)
 		if err := read(reader, &event.IpDestination); err != nil {
-			goto error
+			return nil, err
 		}
 
-	case UNIFIED2_EVENT_IP6, UNIFIED2_EVENT_V2_IP6:
+	case UNIFIED2_EVENT_IP6, UNIFIED2_EVENT_V2_IP6, UNIFIED2_EVENT_APPID_IP6:
 		event.IpSource = make([]byte, 16)
 		if err := read(reader, &event.IpSource); err != nil {
-			goto error
+			return nil, err
 		}
 		event.IpDestination = make([]byte, 16)
 		if err := read(reader, &event.IpDestination); err != nil {
-			goto error
+			return nil, err
 		}
 	}
 
 	/* Source port/ICMP type. */
 	if err := read(reader, &event.SportItype); err != nil {
-		goto error
+		return nil, err
 	}
 
 	/* Destination port/ICMP code. */
 	if err := read(reader, &event.DportIcode); err != nil {
-		goto error
+		return nil, err
 	}
 
 	/* Protocol. */
 	if err := read(reader, &event.Protocol); err != nil {
-		goto error
+		return nil, err
 	}
 
 	/* Impact flag. */
 	if err := read(reader, &event.ImpactFlag); err != nil {
-		goto error
+		return nil, err
 	}
 
 	/* Impact. */
 	if err := read(reader, &event.Impact); err != nil {
-		goto error
+		return nil, err
 	}
 
 	/* Blocked. */
 	if err := read(reader, &event.Blocked); err != nil {
-		goto error
+		return nil, err
 	}
 
 	switch eventType {
-	case UNIFIED2_EVENT_V2, UNIFIED2_EVENT_V2_IP6:
+	case UNIFIED2_EVENT_V2,
+		UNIFIED2_EVENT_V2_IP6,
+		UNIFIED2_EVENT_APPID,
+		UNIFIED2_EVENT_APPID_IP6:
 
 		/* MplsLabel. */
 		if err := read(reader, &event.MplsLabel); err != nil {
-			goto error
+			return nil, err
 		}
 
 		/* VlanId. */
 		if err := read(reader, &event.VlanId); err != nil {
-			goto error
+			return nil, err
 		}
 
+		/* Pad2. */
+		if err := read(reader, &event.Pad2); err != nil {
+			return nil, err
+		}
+	}
+
+	// Any remaining data is the appid.
+	appid := make([]byte, 64)
+	n, err := reader.Read(appid)
+	if err == nil {
+		end := bytes.IndexByte(appid, 0)
+		if end < 0 {
+			end = n
+		}
+		event.AppId = string(appid[0:end])
 	}
 
 	return event, nil
-
-error:
-	return nil, DecodingError
 }
 
 // DecodePacketRecord decodes a raw unified2 record into a

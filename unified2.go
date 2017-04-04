@@ -35,16 +35,19 @@ package unified2
 import (
 	"encoding/binary"
 	"io"
+	"net"
 )
 
 // Unified2 record types.
 const (
-	UNIFIED2_PACKET       = 2
-	UNIFIED2_EVENT        = 7
-	UNIFIED2_EVENT_IP6    = 72
-	UNIFIED2_EVENT_V2     = 104
-	UNIFIED2_EVENT_V2_IP6 = 105
-	UNIFIED2_EXTRA_DATA   = 110
+	UNIFIED2_PACKET          = 2
+	UNIFIED2_EVENT           = 7
+	UNIFIED2_EVENT_IP6       = 72
+	UNIFIED2_EVENT_V2        = 104
+	UNIFIED2_EVENT_V2_IP6    = 105
+	UNIFIED2_EXTRA_DATA      = 110
+	UNIFIED2_EVENT_APPID     = 111
+	UNIFIED2_EVENT_APPID_IP6 = 112
 )
 
 // RawHeader is the raw unified2 record header.
@@ -74,8 +77,8 @@ type EventRecord struct {
 	SignatureRevision uint32
 	ClassificationId  uint32
 	Priority          uint32
-	IpSource          []byte
-	IpDestination     []byte
+	IpSource          net.IP
+	IpDestination     net.IP
 	SportItype        uint16
 	DportIcode        uint16
 	Protocol          uint8
@@ -84,6 +87,8 @@ type EventRecord struct {
 	Blocked           uint8
 	MplsLabel         uint32
 	VlanId            uint16
+	Pad2              uint16
+	AppId             string
 }
 
 // PacketRecord is a struct representing a decoded packet record.
@@ -159,13 +164,13 @@ func ReadRawRecord(file io.ReadWriteSeeker) (*RawRecord, error) {
 // ReadRecord reads a record from the provided file and returns a
 // decoded record.
 //
-// On error, err will no non-nil.  Expected error values are io.EOF
+// On error, err will be non-nil.  Expected error values are io.EOF
 // when the end of the file has been reached or io.ErrUnexpectedEOF if
 // a complete record was unable to be read.
 //
 // In the case of io.ErrUnexpectedEOF the file offset will be reset
 // back to where it was upon entering this function so it is ready to
-// be read from again if it is expected more data will be written to
+// be read from again if it is expected that more data will be written to
 // the file.
 //
 // If an error occurred during decoding of the read data a
@@ -184,7 +189,9 @@ func ReadRecord(file io.ReadWriteSeeker) (interface{}, error) {
 	case UNIFIED2_EVENT,
 		UNIFIED2_EVENT_IP6,
 		UNIFIED2_EVENT_V2,
-		UNIFIED2_EVENT_V2_IP6:
+		UNIFIED2_EVENT_V2_IP6,
+		UNIFIED2_EVENT_APPID,
+		UNIFIED2_EVENT_APPID_IP6:
 		decoded, err = DecodeEventRecord(record.Type, record.Data)
 	case UNIFIED2_PACKET:
 		decoded, err = DecodePacketRecord(record.Data)
