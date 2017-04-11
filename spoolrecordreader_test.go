@@ -152,4 +152,22 @@ func TestRecordSpoolReader(t *testing.T) {
 	if closeHookCount != 1 {
 		t.Fatalf("bad closeHookCount: expected 1, got %d", closeHookCount)
 	}
+
+	// Finish reading the rest of the records.
+	for i := 0; i < 16; i++ {
+		next, err := reader.Next()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if next == nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Read more, we should get a nil event instead of re-opening the
+	// first file.
+	record, err = reader.Next()
+	if record != nil {
+		t.Fatal("expected nil record")
+	}
 }
