@@ -114,13 +114,16 @@ func (r *SpoolRecordReader) openNext() bool {
 	}
 
 	var nextFilename string
+	var foundCurrentFile bool
 
 	for _, file := range files {
-		if r.reader == nil {
+		if r.reader == nil || !r.reader.Exists() {
 			nextFilename = path.Join(r.directory, file.Name())
 			break
 		} else {
-			if path.Base(r.reader.Name()) != file.Name() {
+			if path.Base(r.reader.Name()) == file.Name() {
+				foundCurrentFile = true
+			} else if foundCurrentFile {
 				nextFilename = path.Join(r.directory, file.Name())
 				break
 			}

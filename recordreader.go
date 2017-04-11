@@ -89,3 +89,9 @@ func (r *RecordReader) Offset() int64 {
 func (r *RecordReader) Name() string {
 	return r.File.Name()
 }
+
+// Exists returns whether the file exists
+func (r *RecordReader) Exists() bool {
+	_, err := os.Stat(r.File.Name())
+	return err == nil
+}
