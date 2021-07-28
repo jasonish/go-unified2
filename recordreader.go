@@ -50,11 +50,11 @@ func NewRecordReader(filename string, offset int64) (*RecordReader, error) {
 	if offset > 0 {
 		ret, err := file.Seek(offset, 0)
 		if err != nil {
-			log.Printf("Failed to seek to offset %d: %s", offset, err)
+			log.Printf("Failed to seek to offset %d: %v:", offset, err)
 			file.Close()
 			return nil, err
 		} else if ret != offset {
-			log.Printf("Failed to seek to offset %d: current offset: %s",
+			log.Printf("Failed to seek to offset %d: current offset: %d",
 				offset, ret)
 			file.Close()
 			return nil, err

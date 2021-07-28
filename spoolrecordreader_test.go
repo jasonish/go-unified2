@@ -1,6 +1,7 @@
 package unified2
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -135,8 +136,8 @@ func TestRecordSpoolReader(t *testing.T) {
 	// On the next call, record should be nul and we should have an
 	// error of EOF.
 	record, err = reader.Next()
-	if record != nil || err != io.EOF {
-		t.Fatalf("unexpected results: record not nil, err not EOF")
+	if e := (&ErrBufferTooSmall{}); !errors.As(err, &e) {
+		t.Fatalf("unexpected results: record not nil, err not BufferTooSmallError")
 	}
 
 	// Copy in another file that should be picked up by the spool

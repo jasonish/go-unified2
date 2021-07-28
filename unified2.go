@@ -34,9 +34,26 @@ package unified2
 
 import (
 	"encoding/binary"
+	"errors"
+	"fmt"
 	"io"
 	"net"
 )
+
+// ErrInvalidHeader is returned if the record type does not match any of the known types
+var ErrInvalidHeader = errors.New("Unified2 header invalid. Record type unknown")
+
+// ErrMalformedRecord indicates a failure to parse the body of the record
+var ErrMalformedRecord = errors.New("Unified2 record invalid. Parsing error")
+
+// ErrBufferTooSmall indicates that the provided ReaderSeeker does not contain enough bytes to properly parse the record
+type ErrBufferTooSmall struct {
+	MissingBytes int64
+}
+
+func (e *ErrBufferTooSmall) Error() string {
+	return fmt.Sprintf("Missing %d bytes to parse full record", e.MissingBytes)
+}
 
 // Unified2 record types.
 const (
@@ -124,15 +141,17 @@ const EXTRA_DATA_RECORD_HDR_LEN = 32
 
 // ReadRawRecord reads a raw record from the provided file.
 //
-// On error, err will no non-nil.  Expected error values are io.EOF
-// when the end of the file has been reached or io.ErrUnexpectedEOF if
-// a complete record was unable to be read.
-//
-// In the case of io.ErrUnexpectedEOF the file offset will be reset
-// back to where it was upon entering this function so it is ready to
+// On error, err will no non-nil.  Expected error values areL
+// - ErrBufferTooSmall if EOF has been reached. Contains number of bytes
+//   necessary to parse the current record or the next records header
+// - ErrInvalidHeader if the Header at the current position does not
+//   contain a valid record type
+// - ErrMalformedRecord if the body of the record could not be properly parsed
+// In the case of ErrBufferTooSmall and ErrInvalidHeader the file offset will be
+// reset back to where it was upon entering this function so it is ready to
 // be read from again if it is expected more data will be written to
 // the file.
-func ReadRawRecord(file io.ReadWriteSeeker) (*RawRecord, error) {
+func ReadRawRecord(file io.ReadSeeker) (*RawRecord, error) {
 	var header RawHeader
 
 	/* Get the current offset so we can seek back to it. */
@@ -141,8 +160,24 @@ func ReadRawRecord(file io.ReadWriteSeeker) (*RawRecord, error) {
 	/* Now read in the header. */
 	err := binary.Read(file, binary.BigEndian, &header)
 	if err != nil {
+		read, _ := file.Seek(0, 1)
+
 		file.Seek(offset, 0)
-		return nil, err
+		return nil, &ErrBufferTooSmall{8 - (read - offset)}
+	}
+
+	switch header.Type {
+	case UNIFIED2_EVENT,
+		UNIFIED2_EVENT_IP6,
+		UNIFIED2_EVENT_V2,
+		UNIFIED2_EVENT_V2_IP6,
+		UNIFIED2_EVENT_APPID,
+		UNIFIED2_EVENT_APPID_IP6,
+		UNIFIED2_PACKET,
+		UNIFIED2_EXTRA_DATA:
+	default:
+		file.Seek(offset, 0)
+		return nil, fmt.Errorf("%w: Unknown record type", ErrInvalidHeader)
 	}
 
 	/* Create a buffer to hold the raw record data and read the
@@ -150,12 +185,13 @@ func ReadRawRecord(file io.ReadWriteSeeker) (*RawRecord, error) {
 	data := make([]byte, header.Len)
 	n, err := file.Read(data)
 	if err != nil {
+		// must be EOF
 		file.Seek(offset, 0)
-		return nil, err
+		return nil, &ErrBufferTooSmall{int64(header.Len)}
 	}
 	if uint32(n) != header.Len {
 		file.Seek(offset, 0)
-		return nil, io.ErrUnexpectedEOF
+		return nil, &ErrBufferTooSmall{int64(header.Len) - int64(n)}
 	}
 
 	return &RawRecord{header.Type, data}, nil
@@ -176,7 +212,7 @@ func ReadRawRecord(file io.ReadWriteSeeker) (*RawRecord, error) {
 // If an error occurred during decoding of the read data a
 // DecodingError will be returned.  This likely means the input is
 // corrupt.
-func ReadRecord(file io.ReadWriteSeeker) (interface{}, error) {
+func ReadRecord(file io.ReadSeeker) (interface{}, error) {
 
 	record, err := ReadRawRecord(file)
 	if err != nil {
@@ -200,11 +236,9 @@ func ReadRecord(file io.ReadWriteSeeker) (interface{}, error) {
 	}
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %v", ErrMalformedRecord, err)
 	} else if decoded != nil {
 		return decoded, nil
-	} else {
-		// Unknown record type.
-		return nil, nil
 	}
+	return nil, fmt.Errorf("Decode function returned nil record but no error")
 }
