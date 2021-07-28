@@ -27,7 +27,7 @@
 package unified2
 
 import (
-	"io"
+	"errors"
 	"io/ioutil"
 	"log"
 	"os"
@@ -171,7 +171,7 @@ func (r *SpoolRecordReader) Next() (interface{}, error) {
 
 		record, err := r.reader.Next()
 
-		if err == io.EOF {
+		if e := (&ErrBufferTooSmall{}); errors.As(err, &e) && e.MissingBytes == 8 {
 			if r.openNext() {
 				continue
 			}
